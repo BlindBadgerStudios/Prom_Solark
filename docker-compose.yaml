@@ -1,0 +1,23 @@
+services:
+  prom_solark:
+    build: .
+    container_name: prom_solark
+    restart: unless-stopped
+    ports:
+      - "10112:10112"
+    environment:
+      SOLARK_EMAIL: "${SOLARK_EMAIL}"
+      SOLARK_PASSWORD: "${SOLARK_PASSWORD}"
+      SOLARK_PLANT_ID: "${SOLARK_PLANT_ID:-}"
+      POLL_INTERVAL_SECONDS: "60"
+      LISTEN_PORT: "10112"
+      LOG_LEVEL: "INFO"
+      SOLARK_TIMEOUT_SECONDS: "30"
+      PLANT_STALE_AFTER_SECONDS: "900"
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL

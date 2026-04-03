@@ -1,0 +1,3 @@
+git+https://github.com/BlindBadgerStudios/PySolark.git
+prometheus-client==0.24.1
+pytest>=8.0
