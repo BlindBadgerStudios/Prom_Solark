@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import time
 from datetime import UTC, datetime
 from typing import Any
 
@@ -39,14 +40,27 @@ def _coerce_float(value: Any) -> float | None:
 
 
 class SolArkCollector:
+    _TOKEN_EXPIRY_MARGIN_SECONDS = 300
+
     def __init__(self, client: Any, config: AppConfig, metrics: Metrics) -> None:
         self.client = client
         self.config = config
         self.metrics = metrics
         self._plant_id = config.plant_id
+        self._token_issued_at: float | None = None
 
     def login(self) -> None:
         self.client.login()
+        self._token_issued_at = time.time()
+
+    def _token_near_expiry(self) -> bool:
+        token = self.client.token
+        if token is None or self._token_issued_at is None:
+            return True
+        if token.expires_in is None:
+            return False
+        elapsed = time.time() - self._token_issued_at
+        return elapsed >= (token.expires_in - self._TOKEN_EXPIRY_MARGIN_SECONDS)
 
     def resolve_plant_id(self) -> int:
         if self._plant_id is not None:
@@ -58,6 +72,9 @@ class SolArkCollector:
         return self._plant_id
 
     def collect_once(self) -> None:
+        if self._token_near_expiry():
+            logger.info("Token near expiry, re-authenticating proactively")
+            self.login()
         plant_id = self.resolve_plant_id()
         clear_labeled_metrics(self.metrics)
         plant = self.client.get_plant(plant_id)
