@@ -7,6 +7,8 @@ import time
 import requests
 from prometheus_client import start_http_server
 from pysolark import SolArkClient
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 
 from .collector import SolArkCollector
 from .config import load_config
@@ -50,7 +52,10 @@ def main() -> None:
     config = load_config()
     logging.basicConfig(level=config.log_level, format="%(asctime)s %(levelname)s %(message)s")
     metrics = build_metrics()
-    client = SolArkClient(username=config.username, password=config.password, timeout=config.timeout_seconds)
+    session = requests.Session()
+    retry = Retry(total=3, backoff_factor=1, allowed_methods={"GET", "POST"}, status_forcelist={502, 503, 504})
+    session.mount("https://", HTTPAdapter(max_retries=retry))
+    client = SolArkClient(username=config.username, password=config.password, timeout=config.timeout_seconds, session=session)
     collector = SolArkCollector(client=client, config=config, metrics=metrics)
     collector.login()
     logging.info("Logged in to Sol-Ark. Starting exporter on port %d", config.listen_port)
