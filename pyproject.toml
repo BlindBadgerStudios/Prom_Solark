@@ -8,7 +8,7 @@ version = "0.1.0"
 description = "Prometheus exporter for near real-time Sol-Ark telemetry"
 readme = "README.md"
 requires-python = ">=3.11"
-license = "MIT"
+license = { text = "MIT" }
 authors = [
   { name = "Blind Badger Studios" }
 ]
