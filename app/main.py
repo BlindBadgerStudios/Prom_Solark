@@ -30,7 +30,6 @@ def _run_loop(collector: SolArkCollector, poll_interval_seconds: int, metrics) -
         time.sleep(poll_interval_seconds)
 
 
-
 def main() -> None:
     config = load_config()
     logging.basicConfig(level=config.log_level, format="%(asctime)s %(levelname)s %(message)s")
