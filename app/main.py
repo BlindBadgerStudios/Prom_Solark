@@ -6,7 +6,7 @@ import time
 
 import requests
 from prometheus_client import start_http_server
-from pysolark import SolArkClient
+from pysolark import SolArkClient, SolArkTokenExpiredError
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
@@ -16,6 +16,8 @@ from .metrics import build_metrics
 
 
 def _is_auth_error(exc: Exception) -> bool:
+    if isinstance(exc, SolArkTokenExpiredError):
+        return True
     return (
         isinstance(exc, requests.exceptions.HTTPError)
         and exc.response is not None

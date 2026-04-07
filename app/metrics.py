@@ -29,7 +29,13 @@ class Metrics:
     grid_power_watts: Gauge
     load_power_watts: Gauge
     generator_power_watts: Gauge
+    generator_present: Gauge
+    generator_on: Gauge
     microinverter_power_watts: Gauge
+    microinverter_present: Gauge
+    microinverter_on: Gauge
+    meter_present: Gauge
+    bms_comm_fault: Gauge
     flow_direction: Gauge
     usage_load_kw: Gauge
     usage_pv_kw: Gauge
@@ -81,7 +87,13 @@ def build_metrics(registry: CollectorRegistry | None = None) -> Metrics:
         grid_power_watts=Gauge("solark_grid_power_watts", "Current grid power from flow data", plant_labels, registry=registry),
         load_power_watts=Gauge("solark_load_power_watts", "Current load power from flow data", plant_labels, registry=registry),
         generator_power_watts=Gauge("solark_generator_power_watts", "Current generator power from flow data", plant_labels, registry=registry),
+        generator_present=Gauge("solark_generator_present", "1 if a generator is configured for this plant", plant_labels, registry=registry),
+        generator_on=Gauge("solark_generator_on", "1 if the generator is currently active", plant_labels, registry=registry),
         microinverter_power_watts=Gauge("solark_microinverter_power_watts", "Current microinverter power from flow data", plant_labels, registry=registry),
+        microinverter_present=Gauge("solark_microinverter_present", "1 if a microinverter is configured for this plant", plant_labels, registry=registry),
+        microinverter_on=Gauge("solark_microinverter_on", "1 if the microinverter is currently active", plant_labels, registry=registry),
+        meter_present=Gauge("solark_meter_present", "1 if a meter is configured for this plant", plant_labels, registry=registry),
+        bms_comm_fault=Gauge("solark_bms_comm_fault", "1 if a BMS communication fault is active", plant_labels, registry=registry),
         flow_direction=Gauge("solark_flow_direction", "Boolean-ish power-flow flags from the flow payload", plant_labels + ["direction"], registry=registry),
         usage_load_kw=Gauge("solark_usage_load_kw", "Current load usage from generation/use payload", plant_labels, registry=registry),
         usage_pv_kw=Gauge("solark_usage_pv_kw", "Current PV usage from generation/use payload", plant_labels, registry=registry),
@@ -126,7 +138,13 @@ def clear_labeled_metrics(metrics: Metrics) -> None:
         metrics.grid_power_watts,
         metrics.load_power_watts,
         metrics.generator_power_watts,
+        metrics.generator_present,
+        metrics.generator_on,
         metrics.microinverter_power_watts,
+        metrics.microinverter_present,
+        metrics.microinverter_on,
+        metrics.meter_present,
+        metrics.bms_comm_fault,
         metrics.flow_direction,
         metrics.usage_load_kw,
         metrics.usage_pv_kw,

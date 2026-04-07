@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 import time
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta, timezone
 from typing import Any
 
 from .config import AppConfig
@@ -17,6 +17,7 @@ FLOW_DIRECTIONS = {
     "to_battery": "to_battery",
     "from_battery": "from_battery",
     "from_grid": "from_grid",
+    "generator_to": "generator_to",
 }
 
 
@@ -40,27 +41,24 @@ def _coerce_float(value: Any) -> float | None:
 
 
 class SolArkCollector:
-    _TOKEN_EXPIRY_MARGIN_SECONDS = 300
+    _TOKEN_EXPIRY_MARGIN = timedelta(seconds=300)
 
     def __init__(self, client: Any, config: AppConfig, metrics: Metrics) -> None:
         self.client = client
         self.config = config
         self.metrics = metrics
         self._plant_id = config.plant_id
-        self._token_issued_at: float | None = None
 
     def login(self) -> None:
         self.client.login()
-        self._token_issued_at = time.time()
 
     def _token_near_expiry(self) -> bool:
         token = self.client.token
-        if token is None or self._token_issued_at is None:
+        if token is None:
             return True
-        if token.expires_in is None:
+        if token.expires_at is None:
             return False
-        elapsed = time.time() - self._token_issued_at
-        return elapsed >= (token.expires_in - self._TOKEN_EXPIRY_MARGIN_SECONDS)
+        return datetime.now(timezone.utc) >= (token.expires_at - self._TOKEN_EXPIRY_MARGIN)
 
     def resolve_plant_id(self) -> int:
         if self._plant_id is not None:
@@ -145,6 +143,17 @@ class SolArkCollector:
             value = getattr(flow, attr)
             if value is not None:
                 self.metrics.flow_direction.labels(**labels, direction=metric_label).set(1 if value else 0)
+        for gauge, attr in (
+            (self.metrics.generator_present, "exists_generator"),
+            (self.metrics.generator_on, "generator_on"),
+            (self.metrics.microinverter_present, "exists_microinverter"),
+            (self.metrics.microinverter_on, "microinverter_on"),
+            (self.metrics.meter_present, "exists_meter"),
+            (self.metrics.bms_comm_fault, "bms_comm_fault"),
+        ):
+            value = getattr(flow, attr)
+            if value is not None:
+                gauge.labels(**labels).set(1 if value else 0)
 
     def _record_usage_metrics(self, plant: Any, usage: Any) -> None:
         labels = self._plant_labels(plant)

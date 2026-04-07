@@ -13,6 +13,7 @@ from pysolark.models import (
     SolArkPlantMapPoint,
     SolArkRealtime,
     SolArkTimezone,
+    SolArkToken,
 )
 
 from app.collector import SolArkCollector
@@ -21,6 +22,8 @@ from app.metrics import build_metrics
 
 
 class FakeClient:
+    token: SolArkToken | None = None
+
     def login(self):
         return None
 
@@ -73,6 +76,14 @@ class FakeClient:
             to_battery=True,
             from_battery=False,
             from_grid=False,
+            generator_to=False,
+            exists_generator=False,
+            exists_microinverter=False,
+            generator_on=False,
+            microinverter_on=False,
+            exists_meter=True,
+            meter_code=0,
+            bms_comm_fault=False,
             raw={},
         )
 
