@@ -5,3 +5,10 @@ build/
 dist/
 *.egg-info/
 .env
+
+# Secrets (secret-hygiene)
+*.env
+.env.*
+secrets/
+*.pem
+*.key

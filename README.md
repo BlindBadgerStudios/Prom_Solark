@@ -117,3 +117,12 @@ uv pip install -r requirements.txt
 python -m pytest -q
 python -m app.main
 ```
+
+## Secret scanning
+
+This repo uses a [gitleaks](https://github.com/gitleaks/gitleaks) pre-commit hook. After cloning, run:
+
+```sh
+pip install pre-commit  # or: uv tool install pre-commit
+pre-commit install
+```
