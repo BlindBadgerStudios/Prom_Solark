@@ -19,9 +19,7 @@ def _is_auth_error(exc: Exception) -> bool:
     if isinstance(exc, SolArkTokenExpiredError):
         return True
     return (
-        isinstance(exc, requests.exceptions.HTTPError)
-        and exc.response is not None
-        and exc.response.status_code == 401
+        isinstance(exc, requests.exceptions.HTTPError) and exc.response is not None and exc.response.status_code == 401
     )
 
 
@@ -57,7 +55,9 @@ def main() -> None:
     session = requests.Session()
     retry = Retry(total=3, backoff_factor=1, allowed_methods={"GET", "POST"}, status_forcelist={502, 503, 504})
     session.mount("https://", HTTPAdapter(max_retries=retry))
-    client = SolArkClient(username=config.username, password=config.password, timeout=config.timeout_seconds, session=session)
+    client = SolArkClient(
+        username=config.username, password=config.password, timeout=config.timeout_seconds, session=session
+    )
     collector = SolArkCollector(client=client, config=config, metrics=metrics)
     collector.login()
     logging.info("Logged in to Sol-Ark. Starting exporter on port %d", config.listen_port)

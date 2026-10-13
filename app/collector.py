@@ -20,14 +20,12 @@ FLOW_DIRECTIONS = {
 }
 
 
-
 def _ts(value: datetime | None) -> float | None:
     if value is None:
         return None
     if value.tzinfo is None:
         value = value.replace(tzinfo=UTC)
     return value.timestamp()
-
 
 
 def _coerce_float(value: Any) -> float | None:
