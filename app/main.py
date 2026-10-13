@@ -136,6 +136,9 @@ def main() -> None:
         username=config.username, password=config.password, timeout=config.timeout_seconds, session=session
     )
     collector = SolArkCollector(client=client, config=config, metrics=metrics)
+    # Explicitly report "not up" until the first successful poll; /metrics is now served
+    # before the first login, so Prometheus sees solark_exporter_up 0 during a Sol-Ark outage.
+    metrics.exporter_up.set(0)
     logger.info("Starting exporter on port %d", config.listen_port)
     start_http_server(config.listen_port, registry=metrics.registry)
     thread = threading.Thread(target=_run_loop, args=(collector, config.poll_interval_seconds, metrics), daemon=True)

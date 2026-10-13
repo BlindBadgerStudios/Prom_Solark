@@ -121,3 +121,11 @@ def test_non_auth_poll_error_does_not_relogin():
 )
 def test_is_auth_error(exc, expected):
     assert _is_auth_error(exc) is expected
+
+
+def test_exporter_up_starts_at_zero_and_stays_zero_while_login_fails():
+    metrics = build_metrics()
+    assert _value(metrics, "solark_exporter_up") == 0
+    collector = ScriptedCollector(logins=[requests.ConnectionError("down")])
+    _run_loop(collector, 60, metrics, sleep=lambda _: None, backoff=_no_jitter_backoff(), max_iterations=1)
+    assert _value(metrics, "solark_exporter_up") == 0
