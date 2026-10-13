@@ -69,6 +69,11 @@ class SolArkCollector:
         if not plants:
             raise RuntimeError("No Sol-Ark plants available to the configured account")
         self._plant_id = int(plants[0].plant_id)
+        logger.warning(
+            "SOLARK_PLANT_ID is not set; auto-selected plant %s of %d accessible. Set SOLARK_PLANT_ID to pin it.",
+            self._plant_id,
+            len(plants),
+        )
         return self._plant_id
 
     def collect_once(self) -> None:

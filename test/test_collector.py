@@ -179,3 +179,11 @@ def test_collector_login_falls_back_to_login_without_renew():
     config = AppConfig(username="user@example.com", password="placeholder")
     SolArkCollector(client=LoginOnlyClient(), config=config, metrics=build_metrics()).login()
     assert calls == ["login"]
+
+
+def test_auto_selected_plant_logs_warning(caplog):
+    config = AppConfig(username="user@example.com", password="placeholder")
+    collector = SolArkCollector(client=FakeClient(), config=config, metrics=build_metrics())
+    with caplog.at_level("WARNING", logger="app.collector"):
+        assert collector.resolve_plant_id() == 123
+    assert "SOLARK_PLANT_ID is not set" in caplog.text
