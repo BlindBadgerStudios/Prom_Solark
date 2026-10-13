@@ -47,7 +47,12 @@ class SolArkCollector:
         self._plant_id = config.plant_id
 
     def login(self) -> None:
-        self.client.login()
+        """Renew the session, preferring the refresh token (pysolark >= 0.2.2) over a password login."""
+        renew = getattr(self.client, "renew", None)
+        if callable(renew):
+            renew()
+        else:
+            self.client.login()
 
     def _token_near_expiry(self) -> bool:
         token = self.client.token

@@ -152,3 +152,30 @@ def test_collect_once_populates_metrics():
     )
     assert metrics.registry.get_sample_value("solark_batteries_total") == 0.0
     assert metrics.registry.get_sample_value("solark_inverters_total") == 0.0
+
+
+def test_collector_login_prefers_renew_when_available():
+    calls = []
+
+    class RenewClient(FakeClient):
+        def login(self):
+            calls.append("login")
+
+        def renew(self):
+            calls.append("renew")
+
+    config = AppConfig(username="user@example.com", password="placeholder")
+    SolArkCollector(client=RenewClient(), config=config, metrics=build_metrics()).login()
+    assert calls == ["renew"]
+
+
+def test_collector_login_falls_back_to_login_without_renew():
+    calls = []
+
+    class LoginOnlyClient(FakeClient):
+        def login(self):
+            calls.append("login")
+
+    config = AppConfig(username="user@example.com", password="placeholder")
+    SolArkCollector(client=LoginOnlyClient(), config=config, metrics=build_metrics()).login()
+    assert calls == ["login"]
