@@ -17,6 +17,25 @@ from .metrics import build_metrics
 logger = logging.getLogger(__name__)
 
 
+def build_session() -> requests.Session:
+    """HTTP session that retries only idempotent GETs.
+
+    POST /oauth/token is deliberately excluded: a retried login after a gateway 5xx can create
+    extra sessions on the shared Sol-Ark account. 429 is retried and Retry-After is honored.
+    """
+    session = requests.Session()
+    retry = Retry(
+        total=3,
+        backoff_factor=1,
+        allowed_methods=frozenset({"GET"}),
+        status_forcelist=frozenset({429, 502, 503, 504}),
+        respect_retry_after_header=True,
+        raise_on_status=False,
+    )
+    session.mount("https://", HTTPAdapter(max_retries=retry))
+    return session
+
+
 def _is_auth_error(exc: Exception) -> bool:
     if isinstance(exc, SolArkTokenExpiredError):
         return True
@@ -54,9 +73,7 @@ def main() -> None:
     config = load_config()
     logging.basicConfig(level=config.log_level, format="%(asctime)s %(levelname)s %(message)s")
     metrics = build_metrics()
-    session = requests.Session()
-    retry = Retry(total=3, backoff_factor=1, allowed_methods={"GET", "POST"}, status_forcelist={502, 503, 504})
-    session.mount("https://", HTTPAdapter(max_retries=retry))
+    session = build_session()
     client = SolArkClient(
         username=config.username, password=config.password, timeout=config.timeout_seconds, session=session
     )
