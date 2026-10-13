@@ -113,8 +113,9 @@ The container is configured with:
 ```bash
 uv venv .venv
 . .venv/bin/activate
-uv pip install -r requirements.txt
+uv pip install -r requirements-dev.txt
 python -m pytest -q
+ruff check . && ruff format --check .
 python -m app.main
 ```
 
