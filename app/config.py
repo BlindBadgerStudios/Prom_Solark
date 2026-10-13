@@ -4,11 +4,9 @@ import os
 from dataclasses import dataclass
 
 
-
 def _env_int(name: str, default: int) -> int:
     value = os.getenv(name)
     return int(value) if value not in (None, "") else default
-
 
 
 def _env_optional_int(name: str) -> int | None:
@@ -26,7 +24,6 @@ class AppConfig:
     log_level: str = "INFO"
     timeout_seconds: int = 30
     plant_stale_after_seconds: int = 900
-
 
 
 def load_config() -> AppConfig:

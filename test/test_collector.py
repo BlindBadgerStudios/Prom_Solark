@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 
 from pysolark.models import (
@@ -91,17 +90,22 @@ class FakeClient:
         return SolArkGenerationUse(load=5.9, pv=13.8, battery_charge=0.2, grid_sell=7.7, raw={})
 
     def get_plant_contacts(self, plant_id):
-        return SolArkPlantContacts(plant_id=plant_id, name=None, updated_at=datetime.now(tz=UTC) - timedelta(minutes=1), raw={})
+        return SolArkPlantContacts(
+            plant_id=plant_id, name=None, updated_at=datetime.now(tz=UTC) - timedelta(minutes=1), raw={}
+        )
 
     def get_plants_map(self):
         return [SolArkPlantMapPoint(plant_id=123, longitude=-122.4, latitude=37.7, status=1, raw={})]
 
     def get_batteries_count(self):
-        return SolArkDeviceCount(total=0, normal=0, warning=0, fault=0, offline=0, updated_at=datetime.now(tz=UTC), raw={})
+        return SolArkDeviceCount(
+            total=0, normal=0, warning=0, fault=0, offline=0, updated_at=datetime.now(tz=UTC), raw={}
+        )
 
     def get_inverters_count(self):
-        return SolArkDeviceCount(total=0, normal=0, warning=0, fault=0, offline=0, updated_at=datetime.now(tz=UTC), raw={})
-
+        return SolArkDeviceCount(
+            total=0, normal=0, warning=0, fault=0, offline=0, updated_at=datetime.now(tz=UTC), raw={}
+        )
 
 
 def test_collect_once_populates_metrics():
@@ -111,25 +115,75 @@ def test_collect_once_populates_metrics():
 
     collector.collect_once()
 
-    assert metrics.registry.get_sample_value(
-        "solark_plant_realtime_power_watts",
-        labels={"plant_id": "123", "plant_name": "Example Plant"},
-    ) == 8701.0
-    assert metrics.registry.get_sample_value(
-        "solark_battery_soc_percent",
-        labels={"plant_id": "123", "plant_name": "Example Plant"},
-    ) == 100.0
-    assert metrics.registry.get_sample_value(
-        "solark_flow_direction",
-        labels={"plant_id": "123", "plant_name": "Example Plant", "direction": "to_grid"},
-    ) == 1.0
-    assert metrics.registry.get_sample_value(
-        "solark_usage_pv_kw",
-        labels={"plant_id": "123", "plant_name": "Example Plant"},
-    ) == 13.8
-    assert metrics.registry.get_sample_value(
-        "solark_plants_map_status",
-        labels={"plant_id": "123"},
-    ) == 1.0
+    assert (
+        metrics.registry.get_sample_value(
+            "solark_plant_realtime_power_watts",
+            labels={"plant_id": "123", "plant_name": "Example Plant"},
+        )
+        == 8701.0
+    )
+    assert (
+        metrics.registry.get_sample_value(
+            "solark_battery_soc_percent",
+            labels={"plant_id": "123", "plant_name": "Example Plant"},
+        )
+        == 100.0
+    )
+    assert (
+        metrics.registry.get_sample_value(
+            "solark_flow_direction",
+            labels={"plant_id": "123", "plant_name": "Example Plant", "direction": "to_grid"},
+        )
+        == 1.0
+    )
+    assert (
+        metrics.registry.get_sample_value(
+            "solark_usage_pv_kw",
+            labels={"plant_id": "123", "plant_name": "Example Plant"},
+        )
+        == 13.8
+    )
+    assert (
+        metrics.registry.get_sample_value(
+            "solark_plants_map_status",
+            labels={"plant_id": "123"},
+        )
+        == 1.0
+    )
     assert metrics.registry.get_sample_value("solark_batteries_total") == 0.0
     assert metrics.registry.get_sample_value("solark_inverters_total") == 0.0
+
+
+def test_collector_login_prefers_renew_when_available():
+    calls = []
+
+    class RenewClient(FakeClient):
+        def login(self):
+            calls.append("login")
+
+        def renew(self):
+            calls.append("renew")
+
+    config = AppConfig(username="user@example.com", password="placeholder")
+    SolArkCollector(client=RenewClient(), config=config, metrics=build_metrics()).login()
+    assert calls == ["renew"]
+
+
+def test_collector_login_falls_back_to_login_without_renew():
+    calls = []
+
+    class LoginOnlyClient(FakeClient):
+        def login(self):
+            calls.append("login")
+
+    config = AppConfig(username="user@example.com", password="placeholder")
+    SolArkCollector(client=LoginOnlyClient(), config=config, metrics=build_metrics()).login()
+    assert calls == ["login"]
+
+
+def test_auto_selected_plant_logs_warning(caplog):
+    config = AppConfig(username="user@example.com", password="placeholder")
+    collector = SolArkCollector(client=FakeClient(), config=config, metrics=build_metrics())
+    with caplog.at_level("WARNING", logger="app.collector"):
+        assert collector.resolve_plant_id() == 123
+    assert "SOLARK_PLANT_ID is not set" in caplog.text

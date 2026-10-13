@@ -73,7 +73,7 @@ Required:
 - `SOLARK_PASSWORD`
 
 Optional:
-- `SOLARK_PLANT_ID` - if omitted, the exporter selects the first accessible plant from `plants/map`
+- `SOLARK_PLANT_ID` - **recommended** (set it in production). If omitted, the exporter selects the first accessible plant from `plants/map` and logs a warning; that order is not guaranteed, so an account that gains access to another plant could silently switch plants
 - `POLL_INTERVAL_SECONDS` - default `60`
 - `LISTEN_PORT` - default `10112`
 - `LOG_LEVEL` - default `INFO`
@@ -88,7 +88,7 @@ Optional:
   scrape_timeout: 15s
   static_configs:
     - targets:
-        - 192.168.192.52:10112
+        - 192.0.2.10:10112
       labels:
         site: home
         environment: prod
@@ -102,6 +102,9 @@ Optional:
 Use `docker-compose.yaml` when you want to self-build the exporter image from source.
 Use `compose.yaml` when you want to deploy a pre-built image.
 
+Both compose files read `SOLARK_EMAIL`, `SOLARK_PASSWORD` and `SOLARK_PLANT_ID` from the shell environment or a
+`.env` file next to the compose file (`.env` is gitignored; never commit it).
+
 The container is configured with:
 - read-only root filesystem
 - tmpfs for `/tmp`
@@ -113,8 +116,9 @@ The container is configured with:
 ```bash
 uv venv .venv
 . .venv/bin/activate
-uv pip install -r requirements.txt
+uv pip install -r requirements-dev.txt
 python -m pytest -q
+ruff check . && ruff format --check .
 python -m app.main
 ```
 

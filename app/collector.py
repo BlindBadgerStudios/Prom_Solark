@@ -1,8 +1,7 @@
 from __future__ import annotations
 
 import logging
-import time
-from datetime import UTC, datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from .config import AppConfig
@@ -21,14 +20,12 @@ FLOW_DIRECTIONS = {
 }
 
 
-
 def _ts(value: datetime | None) -> float | None:
     if value is None:
         return None
     if value.tzinfo is None:
         value = value.replace(tzinfo=UTC)
     return value.timestamp()
-
 
 
 def _coerce_float(value: Any) -> float | None:
@@ -50,7 +47,12 @@ class SolArkCollector:
         self._plant_id = config.plant_id
 
     def login(self) -> None:
-        self.client.login()
+        """Renew the session, preferring the refresh token (pysolark >= 0.2.2) over a password login."""
+        renew = getattr(self.client, "renew", None)
+        if callable(renew):
+            renew()
+        else:
+            self.client.login()
 
     def _token_near_expiry(self) -> bool:
         token = self.client.token
@@ -58,7 +60,7 @@ class SolArkCollector:
             return True
         if token.expires_at is None:
             return False
-        return datetime.now(timezone.utc) >= (token.expires_at - self._TOKEN_EXPIRY_MARGIN)
+        return datetime.now(UTC) >= (token.expires_at - self._TOKEN_EXPIRY_MARGIN)
 
     def resolve_plant_id(self) -> int:
         if self._plant_id is not None:
@@ -67,6 +69,11 @@ class SolArkCollector:
         if not plants:
             raise RuntimeError("No Sol-Ark plants available to the configured account")
         self._plant_id = int(plants[0].plant_id)
+        logger.warning(
+            "SOLARK_PLANT_ID is not set; auto-selected plant %s of %d accessible. Set SOLARK_PLANT_ID to pin it.",
+            self._plant_id,
+            len(plants),
+        )
         return self._plant_id
 
     def collect_once(self) -> None:
