@@ -14,6 +14,8 @@ from .collector import SolArkCollector
 from .config import load_config
 from .metrics import build_metrics
 
+logger = logging.getLogger(__name__)
+
 
 def _is_auth_error(exc: Exception) -> bool:
     if isinstance(exc, SolArkTokenExpiredError):
@@ -30,17 +32,17 @@ def _run_loop(collector: SolArkCollector, poll_interval_seconds: int, metrics) -
             collector.collect_once()
             metrics.exporter_up.set(1)
             metrics.exporter_last_success_timestamp.set(time.time())
-            logging.info("Poll succeeded in %.2fs", time.time() - start)
+            logger.info("Poll succeeded in %.2fs", time.time() - start)
         except Exception as exc:
             if _is_auth_error(exc):
-                logging.warning("Token expired (401), re-authenticating")
+                logger.warning("Token expired (401), re-authenticating")
                 try:
                     collector.login()
-                    logging.info("Re-authentication successful")
+                    logger.info("Re-authentication successful")
                 except Exception:
-                    logging.exception("Re-authentication failed")
+                    logger.exception("Re-authentication failed")
             else:
-                logging.exception("Polling cycle failed")
+                logger.exception("Polling cycle failed")
             metrics.exporter_errors_total.inc()
             metrics.exporter_up.set(0)
         finally:
@@ -60,7 +62,7 @@ def main() -> None:
     )
     collector = SolArkCollector(client=client, config=config, metrics=metrics)
     collector.login()
-    logging.info("Logged in to Sol-Ark. Starting exporter on port %d", config.listen_port)
+    logger.info("Logged in to Sol-Ark. Starting exporter on port %d", config.listen_port)
     start_http_server(config.listen_port, registry=metrics.registry)
     thread = threading.Thread(target=_run_loop, args=(collector, config.poll_interval_seconds, metrics), daemon=True)
     thread.start()
