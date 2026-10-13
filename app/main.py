@@ -7,41 +7,22 @@ import time
 
 import requests
 from prometheus_client import start_http_server
-from pysolark import SolArkAPIError, SolArkClient, SolArkTokenExpiredError
-from requests.adapters import HTTPAdapter
-from urllib3.util.retry import Retry
+from pysolark import SolArkAPIError, SolArkAuthError, SolArkClient, SolArkTokenExpiredError
 
 from .collector import SolArkCollector
 from .config import load_config
 from .metrics import build_metrics
-
-try:  # pysolark >= 0.2.2
-    from pysolark import SolArkAuthError
-except ImportError:  # pragma: no cover - pysolark 0.2.1 (current pin) has no SolArkAuthError
-    SolArkAuthError = SolArkTokenExpiredError
 
 logger = logging.getLogger(__name__)
 
 LOGIN_BACKOFF_CAP_SECONDS = 900
 
 
-def build_session() -> requests.Session:
-    """HTTP session that retries only idempotent GETs.
-
-    POST /oauth/token is deliberately excluded: a retried login after a gateway 5xx can create
-    extra sessions on the shared Sol-Ark account. 429 is retried and Retry-After is honored.
-    """
-    session = requests.Session()
-    retry = Retry(
-        total=3,
-        backoff_factor=1,
-        allowed_methods=frozenset({"GET"}),
-        status_forcelist=frozenset({429, 502, 503, 504}),
-        respect_retry_after_header=True,
-        raise_on_status=False,
-    )
-    session.mount("https://", HTTPAdapter(max_retries=retry))
-    return session
+def build_client(config) -> SolArkClient:
+    """Create the Sol-Ark client. HTTP retries are left to PySolark (>= 0.2.2), which retries only
+    idempotent GETs with backoff and honors 429 Retry-After, and never retries POST /oauth/token.
+    The exporter deliberately adds no retry layer of its own, so a failure is not retried twice."""
+    return SolArkClient(username=config.username, password=config.password, timeout=config.timeout_seconds)
 
 
 def _is_auth_error(exc: Exception) -> bool:
@@ -131,10 +112,7 @@ def main() -> None:
     config = load_config()
     logging.basicConfig(level=config.log_level, format="%(asctime)s %(levelname)s %(message)s")
     metrics = build_metrics()
-    session = build_session()
-    client = SolArkClient(
-        username=config.username, password=config.password, timeout=config.timeout_seconds, session=session
-    )
+    client = build_client(config)
     collector = SolArkCollector(client=client, config=config, metrics=metrics)
     # Explicitly report "not up" until the first successful poll; /metrics is now served
     # before the first login, so Prometheus sees solark_exporter_up 0 during a Sol-Ark outage.

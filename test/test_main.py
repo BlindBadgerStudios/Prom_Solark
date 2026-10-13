@@ -1,23 +1,23 @@
 from __future__ import annotations
 
 import random
+from types import SimpleNamespace
 
 import pytest
 import requests
 from pysolark import SolArkAPIError, SolArkTokenExpiredError
 
-from app.main import Backoff, _is_auth_error, _run_loop, build_session
+from app.main import Backoff, _is_auth_error, _run_loop, build_client
 from app.metrics import build_metrics
 
 
-def test_session_retries_only_get_and_handles_429():
-    retry = build_session().get_adapter("https://api.example.invalid").max_retries
-    assert set(retry.allowed_methods) == {"GET"}
-    assert "POST" not in retry.allowed_methods
-    assert 429 in retry.status_forcelist
-    assert retry.respect_retry_after_header is True
-    assert not retry.is_retry("POST", 503)
-    assert retry.is_retry("GET", 429)
+def test_client_retries_once_in_pysolark_only():
+    """No double retry: PySolark owns GET retries; the session carries no urllib3 retry layer."""
+    config = SimpleNamespace(username="user@example.invalid", password="x", timeout_seconds=5)
+    client = build_client(config)
+    assert client.max_retries == 3
+    adapter_retry = client.session.get_adapter("https://api.example.invalid").max_retries
+    assert adapter_retry.total == 0
 
 
 class ScriptedCollector:

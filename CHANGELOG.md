@@ -1,17 +1,16 @@
 # Changelog
 
-## 0.2.2 - unreleased
+## 0.2.2 - 2026-10-13
 
-Version aligned with PySolark 0.2.2. `requirements.txt` still pins `pysolark==0.2.1` (the current PyPI release);
-bump the pin to `0.2.2` once it is published. The code works with both: on 0.2.1 it falls back to password
-login and HTTP 401/403 auth detection; on 0.2.2 it uses `renew()` (refresh token first) and `SolArkAuthError`
-(auth failures inside HTTP 200 envelopes).
+Requires PySolark 0.2.2 (`requirements.txt` pins `pysolark==0.2.2`). Uses `renew()` (refresh token first) and
+`SolArkAuthError` (auth failures inside HTTP 200 envelopes).
 
 ### Fixed
 - Startup no longer logs in before serving `/metrics`. The first login runs inside the poll loop with jittered
   exponential backoff (poll interval doubling up to 15 min), so a Sol-Ark outage no longer causes a
   crash/restart login storm. The main thread exits non-zero if the poll thread dies.
-- HTTP retries apply only to GETs (429/502/503/504, `Retry-After` honored). `POST /oauth/token` is never retried.
+- HTTP retries apply only to GETs (429 with `Retry-After`, plus backoff). `POST /oauth/token` is never retried.
+  Retries are done once, by PySolark; the exporter no longer stacks its own urllib3 retry on top (no double retry).
 - Re-authentication after an auth error happens on the next (backed-off) iteration instead of immediately.
 - Sol-Ark API errors are logged as code/message only (no payloads).
 
