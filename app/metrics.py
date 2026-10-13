@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+
 from prometheus_client import CollectorRegistry, Counter, Gauge
 
 
@@ -69,7 +70,7 @@ def build_metrics(registry: CollectorRegistry | None = None) -> Metrics:
         exporter_last_success_timestamp=Gauge("solark_exporter_last_success_timestamp_seconds", "Unix timestamp of the last successful poll", registry=registry),
         exporter_poll_duration=Gauge("solark_exporter_poll_duration_seconds", "Duration of the last poll in seconds", registry=registry),
         exporter_errors_total=Counter("solark_exporter_errors_total", "Total exporter polling errors", registry=registry),
-        plant_info=Gauge("solark_plant_info", "Static plant info metric (value always 1)", plant_labels + ["timezone", "status_code"], registry=registry),
+        plant_info=Gauge("solark_plant_info", "Static plant info metric (value always 1)", [*plant_labels, "timezone", "status_code"], registry=registry),
         plant_status=Gauge("solark_plant_status", "Numeric plant status from Sol-Ark", plant_labels, registry=registry),
         plant_total_power_kw=Gauge("solark_plant_total_power_kw", "Installed total plant power from Sol-Ark metadata", plant_labels, registry=registry),
         plant_realtime_power_watts=Gauge("solark_plant_realtime_power_watts", "Current realtime plant power", plant_labels, registry=registry),
@@ -94,7 +95,7 @@ def build_metrics(registry: CollectorRegistry | None = None) -> Metrics:
         microinverter_on=Gauge("solark_microinverter_on", "1 if the microinverter is currently active", plant_labels, registry=registry),
         meter_present=Gauge("solark_meter_present", "1 if a meter is configured for this plant", plant_labels, registry=registry),
         bms_comm_fault=Gauge("solark_bms_comm_fault", "1 if a BMS communication fault is active", plant_labels, registry=registry),
-        flow_direction=Gauge("solark_flow_direction", "Boolean-ish power-flow flags from the flow payload", plant_labels + ["direction"], registry=registry),
+        flow_direction=Gauge("solark_flow_direction", "Boolean-ish power-flow flags from the flow payload", [*plant_labels, "direction"], registry=registry),
         usage_load_kw=Gauge("solark_usage_load_kw", "Current load usage from generation/use payload", plant_labels, registry=registry),
         usage_pv_kw=Gauge("solark_usage_pv_kw", "Current PV usage from generation/use payload", plant_labels, registry=registry),
         usage_battery_charge_kw=Gauge("solark_usage_battery_charge_kw", "Current battery charge usage from generation/use payload", plant_labels, registry=registry),

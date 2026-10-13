@@ -4,7 +4,6 @@ import os
 from dataclasses import dataclass
 
 
-
 def _env_int(name: str, default: int) -> int:
     value = os.getenv(name)
     return int(value) if value not in (None, "") else default

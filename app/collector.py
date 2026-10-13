@@ -1,8 +1,7 @@
 from __future__ import annotations
 
 import logging
-import time
-from datetime import UTC, datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from .config import AppConfig
@@ -58,7 +57,7 @@ class SolArkCollector:
             return True
         if token.expires_at is None:
             return False
-        return datetime.now(timezone.utc) >= (token.expires_at - self._TOKEN_EXPIRY_MARGIN)
+        return datetime.now(UTC) >= (token.expires_at - self._TOKEN_EXPIRY_MARGIN)
 
     def resolve_plant_id(self) -> int:
         if self._plant_id is not None:
