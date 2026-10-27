@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.2 - 2026-10-27
+
+### Changed
+- `GET /status` HTML uses the shared exporter status stylesheet (`STATUS_PAGE_CSS` in `app/status.py`) so the page matches the other energy exporters. Type is 16px Segoe UI / Helvetica / Arial, text `#1c1c1c` on `#f6f5f2`, with white section cards, a two-column grid, and definition lists (9rem label column, 0.28rem row padding). UP / DEGRADED / DOWN are `#146c2e` / `#8a5a00` / `#9b1c1c`.
+- Section headings stay Overview, Error and hint, Series and process, Exporter extras, and Hints. The title stays `prom_solark · /status`.
+- Solark plant extras, hints, the JSON payload, and Prometheus metrics are unchanged.
+
 ## 0.3.1 - 2026-10-27
 
 ### Added
