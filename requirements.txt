@@ -1,2 +1,2 @@
 pysolark==0.2.2
-prometheus-client==0.24.1
+prometheus-client==0.26.0
