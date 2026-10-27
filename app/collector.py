@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
@@ -37,6 +38,15 @@ def _coerce_float(value: Any) -> float | None:
         return None
 
 
+@dataclass(slots=True)
+class PlantSnapshot:
+    """Last successful plant identity for /status. No coordinates, address, or account fields."""
+
+    plant_id: int
+    plant_name: str | None
+    energy_today_kwh: float | None
+
+
 class SolArkCollector:
     _TOKEN_EXPIRY_MARGIN = timedelta(seconds=300)
 
@@ -45,6 +55,7 @@ class SolArkCollector:
         self.config = config
         self.metrics = metrics
         self._plant_id = config.plant_id
+        self.last_snapshot: PlantSnapshot | None = None
 
     def login(self) -> None:
         """Renew the session, preferring the refresh token (pysolark >= 0.2.2) over a password login."""
@@ -94,6 +105,13 @@ class SolArkCollector:
         self._record_usage_metrics(plant, usage)
         self._record_map_metrics(plants_map)
         self._record_count_metrics(batteries, inverters)
+        # Captured only after a full poll so DEGRADED/DOWN can show the last known
+        # plant without an extra request. Energy today is already on the realtime payload.
+        self.last_snapshot = PlantSnapshot(
+            plant_id=int(plant.plant_id),
+            plant_name=plant.name or None,
+            energy_today_kwh=_coerce_float(realtime.etoday),
+        )
 
     def _plant_labels(self, plant: Any) -> dict[str, str]:
         return {

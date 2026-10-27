@@ -80,6 +80,14 @@ Optional:
 - `SOLARK_TIMEOUT_SECONDS` - default `30`
 - `PLANT_STALE_AFTER_SECONDS` - default `900`
 
+## Operator status
+
+`GET /status` is a read-only HTML page. `GET /status?format=json` returns the same fields for scripts.
+Prometheus scrapes `/metrics` only; that output is unchanged.
+
+On docker3 the page is `http://127.0.0.1:10112/status` via the lab SSH hop (no public listen).
+The page never includes secrets, tokens, account emails, or plant coordinates. Shared logins can kick other sessions, so avoid restart loops while the exporter is backing off.
+
 ## Prometheus scrape config example
 
 ```yaml

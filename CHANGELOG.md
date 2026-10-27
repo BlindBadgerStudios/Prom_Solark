@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.3.1 - 2026-10-27
+
+### Added
+- `GET /status` is a read-only HTML page for operators. `GET /status?format=json` returns the same fields.
+  Overall state follows the shared helper rule: UP when the last success is within 2× the poll interval and
+  there is no hard auth failure; DEGRADED when an upstream 5xx/timeout (or other non-auth failure) is backing
+  off and the process is still polling; DOWN on auth failure or when there has been no success past the
+  15 minute hard age cutoff.
+- Sol-Ark extras: plant name, plant id, and today's energy (already fetched during the poll). DEGRADED and
+  DOWN keep that last successful snapshot.
+- Hints cover cred mounts, docker3 outbound, rate limits, TLS/DNS, empty daylight data, and that shared
+  logins can kick other sessions. The HTML page notes localhost access on docker3 via the lab SSH hop.
+- Status text redacts tokens, passwords, auth headers, tokenized URLs, and account emails.
+
+### Notes
+- `/metrics` is unchanged. No Prometheus metric renames.
+
 ## 0.3.0 - 2026-10-27
 
 ### Changed

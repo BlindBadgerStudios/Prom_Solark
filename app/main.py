@@ -6,12 +6,14 @@ import threading
 import time
 
 import requests
-from prometheus_client import start_http_server
 from pysolark import SolArkAPIError, SolArkAuthError, SolArkClient, SolArkTokenExpiredError
 
+from . import __version__
 from .collector import SolArkCollector
 from .config import load_config
 from .metrics import build_metrics
+from .server import start_exporter_http_server
+from .status import PollState, build_status
 
 logger = logging.getLogger(__name__)
 
@@ -70,6 +72,7 @@ def _run_loop(
     sleep=time.sleep,
     backoff: Backoff | None = None,
     max_iterations: int | None = None,
+    status: PollState | None = None,
 ) -> None:
     """Poll forever. The first login happens here, not at startup, so a Sol-Ark outage
     leads to backed-off retries instead of a crash/restart login storm."""
@@ -91,7 +94,15 @@ def _run_loop(
             metrics.exporter_last_success_timestamp.set(time.time())
             backoff.reset()
             logger.info("Poll succeeded in %.2fs", time.time() - start)
+            if status is not None:
+                snap = getattr(collector, "last_snapshot", None)
+                status.record_success(
+                    plant_id=getattr(snap, "plant_id", None),
+                    plant_name=getattr(snap, "plant_name", None),
+                    energy_today_kwh=getattr(snap, "energy_today_kwh", None),
+                )
         except Exception as exc:  # noqa: BLE001 - the poll loop must survive any failure
+            phase = "login" if (not authenticated or _is_auth_error(exc)) else "plant detail"
             if not authenticated:
                 _log_failure(exc, "Sol-Ark login failed")
             elif _is_auth_error(exc):
@@ -102,9 +113,13 @@ def _run_loop(
             metrics.exporter_errors_total.inc()
             metrics.exporter_up.set(0)
             delay = max(poll_interval_seconds, backoff.next_delay())
+            if status is not None:
+                status.record_failure(exc, failures=backoff.failures, backoff_s=delay, phase=phase)
             logger.info("Next attempt in %.0fs", delay)
         finally:
             metrics.exporter_poll_duration.set(time.time() - start)
+        if status is not None:
+            status.note_sleep(delay, reason="backoff" if backoff.failures else "poll")
         sleep(delay)
 
 
@@ -114,13 +129,30 @@ def main() -> None:
     metrics = build_metrics()
     client = build_client(config)
     collector = SolArkCollector(client=client, config=config, metrics=metrics)
+    status = PollState(
+        poll_interval_s=config.poll_interval_seconds,
+        listen_port=config.listen_port,
+        literals=(config.username, config.password),
+        version=__version__,
+    )
+    status.set_configured_plant_id(config.plant_id)
     # Explicitly report "not up" until the first successful poll; /metrics is now served
     # before the first login, so Prometheus sees solark_exporter_up 0 during a Sol-Ark outage.
     metrics.exporter_up.set(0)
-    logger.info("Starting exporter on port %d", config.listen_port)
-    start_http_server(config.listen_port, registry=metrics.registry)
-    thread = threading.Thread(target=_run_loop, args=(collector, config.poll_interval_seconds, metrics), daemon=True)
+    logger.info("Starting exporter on port %d (/metrics and /status)", config.listen_port)
+    thread = threading.Thread(
+        target=_run_loop,
+        args=(collector, config.poll_interval_seconds, metrics),
+        kwargs={"status": status},
+        daemon=True,
+    )
+    status.bind_thread(thread)
     thread.start()
+    start_exporter_http_server(
+        config.listen_port,
+        metrics.registry,
+        lambda: build_status(status, registry=metrics.registry, version=__version__),
+    )
     thread.join()
     logger.critical("Polling thread exited unexpectedly")
     raise SystemExit(1)
