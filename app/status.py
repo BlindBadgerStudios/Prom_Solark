@@ -42,6 +42,27 @@ DEGRADED and DOWN keep the last successful plant snapshot (name, plant id,
 energy today). Status output never includes secrets, tokens, passwords,
 Authorization headers, cookies, account emails, latitude, longitude, or street
 addresses.
+
+Status page chrome
+------------------
+``render_html`` embeds ``STATUS_PAGE_CSS``. That block is the shared operator
+stylesheet for prom_tigo, prom_solark, and prom_emvue. Copy it unchanged so the
+three pages read as one product. It follows the Emporia page's type, colors,
+access bar, and white cards, and uses definition lists instead of tables.
+
+- Font: 16px/1.45 "Segoe UI", Helvetica, Arial, sans-serif.
+- Page: text ``#1c1c1c`` on ``#f6f5f2``; centered column, max-width 980px.
+- Cards: white (``#fff``) with a 1px ``#ddd`` border, in a two-column grid
+  with a 1rem gap (one column below 720px).
+- Access note: ``#e7eef5`` bar with a 4px ``#0b4f8a`` left border. Links use
+  ``#0b4f8a``.
+- State: ``.UP`` ``#146c2e``, ``.DEGRADED`` ``#8a5a00``, ``.DOWN`` ``#9b1c1c``,
+  weight 700. Class names are the state words.
+- Labels: ``dt``/``dd``, 9rem label column (7.5rem below 720px), ``#444``
+  weight 600, 0.28rem vertical padding, 0.6rem column gap.
+- Title: ``<exporter> · /status``.
+- Section headings, in order: Overview; Error and hint; Series and process;
+  Exporter extras; Hints.
 """
 
 from __future__ import annotations
@@ -541,6 +562,47 @@ def build_status(
     }
 
 
+# Shared /status chrome for prom_tigo, prom_solark, and prom_emvue.
+# Copy this block unchanged. See the module docstring.
+STATUS_PAGE_CSS = """\
+:root { color-scheme: light; }
+body {
+  margin: 0;
+  font: 16px/1.45 "Segoe UI", Helvetica, Arial, sans-serif;
+  color: #1c1c1c;
+  background: #f6f5f2;
+}
+main { max-width: 980px; margin: 0 auto; padding: 1.5rem 1rem 3rem; }
+h1 { font-size: 1.5rem; margin: 0.4rem 0 0.2rem; }
+h2 { font-size: 1.05rem; margin: 0 0 0.6rem; }
+a { color: #0b4f8a; }
+.access { background: #e7eef5; border-left: 4px solid #0b4f8a; padding: 0.75rem 1rem; margin: 0; }
+.sub { color: #444; margin: 0.2rem 0; }
+.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem; }
+section { background: #fff; border: 1px solid #ddd; padding: 0.9rem 1rem 1rem; }
+section.hints { margin-top: 1rem; }
+dl {
+  display: grid;
+  grid-template-columns: 9rem 1fr;
+  column-gap: 0.6rem;
+  row-gap: 0;
+  margin: 0;
+  align-items: start;
+}
+dt { color: #444; font-weight: 600; padding: 0.28rem 0; }
+dd { margin: 0; padding: 0.28rem 0; }
+.UP { color: #146c2e; font-weight: 700; }
+.DEGRADED { color: #8a5a00; font-weight: 700; }
+.DOWN { color: #9b1c1c; font-weight: 700; }
+.note { color: #444; margin: 0.4rem 0 0; }
+ul { margin: 0.3rem 0 0; padding-left: 1.2rem; }
+@media (max-width: 720px) {
+  .grid { grid-template-columns: 1fr; }
+  dl { grid-template-columns: 7.5rem 1fr; }
+}
+"""
+
+
 def render_html(payload: dict[str, Any]) -> str:
     """Render the operator page from the same fields ``build_status`` returns."""
     overall = payload["overall"] if payload["overall"] in {"UP", "DEGRADED", "DOWN"} else "DOWN"
@@ -600,6 +662,7 @@ def render_html(payload: dict[str, Any]) -> str:
     for title, body in sections:
         blocks.append(f"<section><h2>{html.escape(title)}</h2>{body}</section>")
     hints = "".join(f"<li>{html.escape(item)}</li>" for item in payload["hints"])
+    subtitle = f"{payload['exporter']} {payload['version']} · {payload['mode']} · read-only"
     return f"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -608,34 +671,24 @@ def render_html(payload: dict[str, Any]) -> str:
 <meta name="robots" content="noindex">
 <title>{html.escape(payload["exporter"])} · /status</title>
 <style>
-  body {{ font: 15px/1.45 -apple-system, "Segoe UI", sans-serif; margin: 2rem; color: #1b1b1b; background: #f6f5f2; }}
-  h1 {{ font-size: 1.45rem; margin-bottom: 0.25rem; }}
-  h2 {{ font-size: 1rem; margin: 0 0 0.5rem; }}
-  .banner {{ background: #eef3f8; border: 1px solid #c5d4e4; padding: 0.75rem 1rem; margin: 1rem 0; }}
-  .grid {{ display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }}
-  section {{ background: #fff; border: 1px solid #ddd; padding: 0.75rem 1rem; }}
-  dl {{ margin: 0; }}
-  dt {{ color: #555; font-size: 0.85rem; }}
-  dd {{ margin: 0 0 0.65rem; }}
-  .UP {{ color: #0a7a32; font-weight: 700; }}
-  .DEGRADED {{ color: #8a5a00; font-weight: 700; }}
-  .DOWN {{ color: #a32020; font-weight: 700; }}
-  .rule {{ color: #444; font-size: 0.9rem; }}
-  @media (max-width: 800px) {{ .grid {{ grid-template-columns: 1fr; }} }}
-</style>
+{STATUS_PAGE_CSS}</style>
 </head>
 <body>
+<main>
+  <p class="access">{html.escape(payload["access_note"])}</p>
   <h1>{html.escape(payload["exporter"])} · /status</h1>
-  <p class="banner">{html.escape(payload["access_note"])}</p>
-  <p class="rule">{html.escape(payload["state_rule"])}</p>
+  <p class="sub">{html.escape(subtitle)}</p>
+  <p class="sub"><a href="/status?format=json">JSON</a> · <a href="/metrics">metrics</a></p>
+  <p class="note">{html.escape(payload["state_rule"])}</p>
   <div class="grid">
     {"".join(blocks)}
   </div>
-  <section>
+  <section class="hints">
     <h2>Hints</h2>
     <ul>{hints}</ul>
   </section>
-  <p class="rule">Read-only. This page does not change the exporter or the plant.</p>
+  <p class="note">Read-only. This page does not change the exporter or the plant.</p>
+</main>
 </body>
 </html>
 """

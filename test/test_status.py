@@ -317,6 +317,8 @@ def test_json_shape_matches_html_fields():
     _assert_public(payload)
 
     page = render_html(payload)
+    assert "<title>prom_solark · /status</title>" in page
+    assert "<h1>prom_solark · /status</h1>" in page
     assert payload["access_note"] in page
     assert "http://127.0.0.1:10112/status" in page
     assert "docker3" in page
@@ -336,6 +338,52 @@ def test_json_shape_matches_html_fields():
         payload["series_display"],
     ):
         assert field in page
+
+
+def test_html_uses_shared_status_chrome():
+    """The operator page uses the shared card chrome, not a one-off stylesheet."""
+    state = _status()
+    state.record_success(plant_id=137067, plant_name="Sean Wells plant", energy_today_kwh=42.6, now=NOW - 20)
+    state.note_sleep(60, reason="poll", now=NOW - 20)
+    page = render_html(build_status(state, now=NOW))
+    assert "<title>prom_solark · /status</title>" in page
+    assert "<h1>prom_solark · /status</h1>" in page
+    cursor = 0
+    for heading in (
+        "Overview",
+        "Error and hint",
+        "Series and process",
+        "Exporter extras",
+        "Hints",
+    ):
+        token = f"<h2>{heading}</h2>"
+        found = page.find(token, cursor)
+        assert found != -1
+        cursor = found + len(token)
+    assert page.count("<h2>") == 5
+    assert "<h2>Notes</h2>" not in page
+    assert "<dl>" in page
+    assert "<dt>Overall</dt>" in page
+    assert '<span class="UP">' in page
+    assert "<dt>Plant</dt>" in page
+    assert "<dt>Plant ID</dt>" in page
+    assert "Solark: shared logins can kick other sessions." in page
+    for token in (
+        'font: 16px/1.45 "Segoe UI", Helvetica, Arial, sans-serif',
+        "color: #1c1c1c",
+        "background: #f6f5f2",
+        "background: #fff",
+        "border: 1px solid #ddd",
+        "grid-template-columns: 1fr 1fr",
+        "grid-template-columns: 9rem 1fr",
+        "padding: 0.28rem 0",
+        ".UP { color: #146c2e; font-weight: 700; }",
+        ".DEGRADED { color: #8a5a00; font-weight: 700; }",
+        ".DOWN { color: #9b1c1c; font-weight: 700; }",
+        "max-width: 720px",
+        "grid-template-columns: 7.5rem 1fr",
+    ):
+        assert token in page
 
 
 def test_html_escapes_plant_name_and_error_text():
@@ -424,7 +472,7 @@ def test_run_loop_keeps_last_known_snapshot_and_redacts_errors():
 def test_version_matches_package_metadata():
     pyproject = (Path(__file__).resolve().parents[1] / "pyproject.toml").read_text()
     assert f'version = "{__version__}"' in pyproject
-    assert __version__ == "0.3.1"
+    assert __version__ == "0.3.2"
 
 
 def _call(app, path, query="", method="GET"):

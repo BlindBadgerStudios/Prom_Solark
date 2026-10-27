@@ -85,6 +85,8 @@ Optional:
 `GET /status` is a read-only HTML page. `GET /status?format=json` returns the same fields for scripts.
 Prometheus scrapes `/metrics` only; that output is unchanged.
 
+The HTML chrome is the shared exporter stylesheet `STATUS_PAGE_CSS` in `app/status.py` (type, colors, white section cards, and definition-list spacing). Copy that block when aligning the other energy exporters.
+
 On docker3 the page is `http://127.0.0.1:10112/status` via the lab SSH hop (no public listen).
 The page never includes secrets, tokens, account emails, or plant coordinates. Shared logins can kick other sessions, so avoid restart loops while the exporter is backing off.
 
