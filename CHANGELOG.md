@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.0 - 2026-10-27
+
+### Changed
+- Dependency bump: `prometheus-client` 0.24.1 → 0.26.0.
+- Minor version bump to 0.3.0.
+
 ## 0.2.2 - 2026-10-13
 
 Requires PySolark 0.2.2 (`requirements.txt` pins `pysolark==0.2.2`). Uses `renew()` (refresh token first) and
