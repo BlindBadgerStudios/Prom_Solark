@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 
+import pytest
 from pysolark.models import (
     SolArkCurrency,
     SolArkDeviceCount,
@@ -152,6 +153,28 @@ def test_collect_once_populates_metrics():
     )
     assert metrics.registry.get_sample_value("solark_batteries_total") == 0.0
     assert metrics.registry.get_sample_value("solark_inverters_total") == 0.0
+    assert collector.last_snapshot is not None
+    assert collector.last_snapshot.plant_id == 123
+    assert collector.last_snapshot.plant_name == "Example Plant"
+    assert collector.last_snapshot.energy_today_kwh == 13.7
+    assert not hasattr(collector.last_snapshot, "latitude")
+    assert not hasattr(collector.last_snapshot, "address")
+
+
+def test_failed_poll_keeps_previous_status_snapshot():
+    metrics = build_metrics()
+    config = AppConfig(username="user", password="secret", plant_id=123)
+    collector = SolArkCollector(client=FakeClient(), config=config, metrics=metrics)
+    collector.collect_once()
+    first = collector.last_snapshot
+
+    def boom(_plant_id):
+        raise RuntimeError("upstream down")
+
+    collector.client.get_plant_energy_flow = boom
+    with pytest.raises(RuntimeError, match="upstream down"):
+        collector.collect_once()
+    assert collector.last_snapshot == first
 
 
 def test_collector_login_prefers_renew_when_available():
